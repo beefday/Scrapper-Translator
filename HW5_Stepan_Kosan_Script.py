@@ -18,6 +18,12 @@ from torch import cuda
 import feedparser as fp
 import csv
 
+device = 'cuda' if cuda.is_available() else None
+translator = Translator() # carry-over from local implementation, where translator object has to be created, however works on Jupyter too
+opus = EasyNMT('opus-mt', device = device)
+m2m = EasyNMT('m2m_100_418m', device = device)
+
+
 def rss_pars(url, max):
     # takes two arguments, rss feed url and how many links should be scrapped
     
@@ -34,7 +40,6 @@ def dig_art(url):
 
 def trans_goog(text):
     split_text = wrap(text, 500)
-    translator = Translator() # carry-over from local implementation, where translator object has to be created, however works on Jupyter too
     translated = []
     for t in split_text:
         translation = translator.translate(t, dest='cs', src='en')
@@ -43,18 +48,14 @@ def trans_goog(text):
 
 def trans_opus(text):
     cuda.empty_cache()
-    device = 'cuda' if cuda.is_available() else None
-    model = EasyNMT('opus-mt', device = device)
-    translation = model.translate(text, target_lang = "cs", show_progress_bar = True, max_length=len(text)+1, batch_size=2) # Can recommend setting the max_length to the lenght of the input
+    translation = opus.translate(text, target_lang = "cs", show_progress_bar = True, max_length=len(text)+1, batch_size=8) # Can recommend setting the max_length to the lenght of the input
     # the key to overcoming the CUDA/RAM limitations I found to be to pick the right batch_size
     return translation
 
 def trans_m2m(text):
     cuda.empty_cache()
-    device = 'cuda' if cuda.is_available() else None
-    model = EasyNMT('m2m_100_418m', device = device)
     # now usable with the 1.2b parameter model as well, however the quality difference seemed neglible to me with noticably longer runtimes
-    translation = model.translate(text, target_lang = "cs", show_progress_bar = True, max_length=len(text)+1, batch_size=2)
+    translation = m2m.translate(text, target_lang = "cs", show_progress_bar = True, max_length=len(text)+1, batch_size=8)
     return translation
 
 def write_csv(llist):
