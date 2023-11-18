@@ -22,17 +22,32 @@ m2m = EasyNMT('m2m_100_418m', device = device)
 
 
 def rss_pars(url, max):
-    # takes two arguments, rss feed url and how many links should be scrapped    
-    d = fp.parse(url)
-    link_list = []
-    for i in range(max):
-        link_list.append(d.entries[i].link)
+    # takes two arguments, rss feed url and how many links should be scrapped 
+    try:   
+        d = fp.parse(url)
+        link_list = []
+        for i in range(max):
+            print("RSS feed link valid! \"{tph}\" will be included!\n".format(tph = d.entries[i].title))
+            if (d.entries[i].link is not None):
+                link_list.append(d.entries[i].link)
+            else:
+                print("RSS feed link invalid or missing! \"{tph}\" will be skipped!\n".format(tph = d.entries[i].title))            
+    except:
+        print("RSS feed parsing failed!\n")
+        exit(1)
+    
     return link_list
 
 def dig_art(url):
-    article = NewsPlease.from_url(url)
-    maintext = article.maintext
-    return [article.title, article.maintext, trans_goog(maintext), trans_opus(maintext), trans_m2m(maintext), url]
+    try:
+        article = NewsPlease.from_url(url)
+        maintext = article.maintext
+        title = article.title
+    except:
+        print("Article parsing failed!\n")
+        exit(1)
+       
+    return [title, maintext, trans_goog(maintext), trans_opus(maintext), trans_m2m(maintext), url] #TODO bad return
 
 def trans_goog(text):
     split_text = wrap(text, 500)
@@ -64,10 +79,10 @@ def write_csv(llist):
 
 def main():
     cuda.empty_cache() 
-    url_list = rss_pars("https://moxie.foxnews.com/google-publisher/world.xml", 10) # Can be substituted with any suitable RSS news feed
+    url_list = rss_pars("http://rss.cnn.com/rss/edition.rss", 20) # Can be substituted with any suitable RSS news feed
     comp = [] # while it can be useful to convert to pd dataframe in many cases, for this purpose Python built-in "list of lists" will suffice
-    for i in range(len(url_list)): # interestingly this "wrong" type of loop seems to save RAM as it doesnt copy the variable
-        comp.append(dig_art(url_list[i]))
+    for i in url_list:
+        comp.append(dig_art(i))
     write_csv(comp)
 
 if __name__ == "__main__":
